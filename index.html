@@ -213,7 +213,7 @@
             async loadDatasetFromGitHub() {
                 this.status.textContent = 'Loading dataset from GitHub...';
                 try {
-                    const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/${this.githubPath}`;
+                const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/contents/${this.githubPath}`;
                     const response = await fetch(url, {
                         headers: {
                             'Authorization': `token ${this.githubToken}`,
