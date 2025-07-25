@@ -106,8 +106,8 @@
                     <button id="stop-camera" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors disabled:opacity-50" disabled>
                         Stop Camera
                     </button>
-                    <button id="commit-changes" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
-                        Commit Changes
+                    <button id="save-data" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
+                        Download Dataset
                     </button>
                 </div>
             </div>
@@ -141,7 +141,7 @@
                     <input id="new-serial" type="text" readonly class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item Serial ID:</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item ID:</label>
                     <input id="new-item-id" type="text" readonly class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
                 </div>
                 <div class="flex gap-3 pt-2">
@@ -165,18 +165,9 @@
                 this.lastScanTime = 0;
                 this.scanCooldown = 2000;
                 
-                // GitHub API Configuration
-                // WARNING: This token is public! Use a dedicated token with minimal permissions.
-                // Replace these values with your own.
-                this.githubToken = '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';
-                this.githubOwner = 'aqeel1415';
-                this.githubRepo = 'InventoryBC';
-                this.githubPath = 'data/dataset.xml';
-                this.githubSha = null;
-
                 this.initializeElements();
                 this.bindEvents();
-                this.loadDatasetFromGitHub();
+                this.loadDatasetFromLocalStorage();
             }
 
             initializeElements() {
@@ -190,13 +181,13 @@
                 this.lastScanValue = document.getElementById('last-scan-value');
                 this.resultModal = document.getElementById('result-modal');
                 this.addModal = document.getElementById('add-modal');
-                this.commitBtn = document.getElementById('commit-changes');
+                this.saveBtn = document.getElementById('save-data');
             }
 
             bindEvents() {
                 this.startBtn.addEventListener('click', () => this.startCamera());
                 this.stopBtn.addEventListener('click', () => this.stopCamera());
-                this.commitBtn.addEventListener('click', () => this.commitChanges());
+                this.saveBtn.addEventListener('click', () => this.downloadDataset());
                 
                 document.getElementById('cancel-add').addEventListener('click', () => this.hideAddModal());
                 document.getElementById('confirm-add').addEventListener('click', () => this.confirmAdd());
@@ -210,101 +201,36 @@
                 });
             }
 
-            async loadDatasetFromGitHub() {
-                this.status.textContent = 'Loading dataset from GitHub...';
-                try {
-                const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/${this.githubPath}`;
-                    const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `token ${this.githubToken}`,
-                            'Accept': 'application/vnd.github.v3.raw'
-                        }
-                    });
-                    if (!response.ok) throw new Error('Failed to fetch dataset. Check your token and repo info.');
-                    
-                    const xmlString = await response.text();
-                    this.dataset = this.parseXml(xmlString);
-                    this.updateDatasetPreview();
-                    this.status.textContent = 'Dataset loaded. Ready to scan.';
-                    
-                    // Get the file's SHA for updating later
-                    const fileInfoResponse = await fetch(url, {
-                        headers: { 'Authorization': `token ${this.githubToken}` }
-                    });
-                    const fileInfo = await fileInfoResponse.json();
-                    this.githubSha = fileInfo.sha;
-
-                } catch (error) {
-                    console.error('GitHub load error:', error);
-                    this.status.textContent = 'Error loading dataset. Check console for details.';
-                }
-            }
-
-            parseXml(xmlString) {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlString, "application/xml");
-                const items = Array.from(xmlDoc.getElementsByTagName('item'));
-                return items.map(item => ({
-                    itemSerialID: parseInt(item.getElementsByTagName('itemSerialID')[0].textContent),
-                    serialNumber: item.getElementsByTagName('serialNumber')[0].textContent
-                }));
-            }
-
-            convertToXml(dataset) {
-                const doc = document.implementation.createDocument(null, 'inventory');
-                const inventory = doc.documentElement;
-                dataset.forEach(item => {
-                    const itemElement = doc.createElement('item');
-                    const idElement = doc.createElement('itemSerialID');
-                    idElement.textContent = item.itemSerialID;
-                    const serialElement = doc.createElement('serialNumber');
-                    serialElement.textContent = item.serialNumber;
-                    itemElement.appendChild(idElement);
-                    itemElement.appendChild(serialElement);
-                    inventory.appendChild(itemElement);
-                });
-                return new XMLSerializer().serializeToString(doc);
-            }
-
-            async commitChanges() {
-                this.status.textContent = 'Committing changes to GitHub...';
-                this.commitBtn.disabled = true;
-
-                const newXmlString = this.convertToXml(this.dataset);
-                const base64Content = btoa(newXmlString);
-
-                const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/${this.githubPath}`;
-                const payload = {
-                    message: `Update from scanner app at ${new Date().toISOString()}`,
-                    content: base64Content,
-                    sha: this.githubSha
-                };
-
-                try {
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${this.githubToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                         const errorData = await response.json();
-                         throw new Error(`GitHub API Error: ${errorData.message}`);
+            loadDatasetFromLocalStorage() {
+                const storedData = localStorage.getItem('inventoryDataset');
+                if (storedData) {
+                    try {
+                        this.dataset = JSON.parse(storedData);
+                        this.status.textContent = 'Loaded dataset from previous session. Ready to scan.';
+                    } catch (error) {
+                        console.error('Error parsing local storage data:', error);
+                        this.status.textContent = 'Error loading data from local storage. Starting fresh.';
+                        this.dataset = [];
                     }
-                    
-                    const result = await response.json();
-                    this.githubSha = result.content.sha;
-                    this.status.textContent = 'Changes committed successfully!';
-
-                } catch (error) {
-                    console.error('GitHub commit error:', error);
-                    this.status.textContent = 'Error committing changes. Check console.';
-                } finally {
-                    this.commitBtn.disabled = false;
+                } else {
+                    this.status.textContent = 'Ready to scan.';
+                    this.dataset = [];
                 }
+                this.updateDatasetPreview();
+            }
+
+            saveDatasetToLocalStorage() {
+                localStorage.setItem('inventoryDataset', JSON.stringify(this.dataset));
+            }
+
+            downloadDataset() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.dataset, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "scanned_inventory.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
             }
 
             async startCamera() {
@@ -377,8 +303,8 @@
                         <div class="text-4xl mb-3">✅</div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found!</h3>
                         <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-4">
-                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item Serial ID:</div>
-                            <div class="font-semibold text-green-700 dark:text-green-400 text-lg">${item.itemSerialID}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item ID:</div>
+                            <div class="font-semibold text-green-700 dark:text-green-400 text-lg">${item.id}</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Serial Number:</div>
                             <div class="font-mono text-sm break-all text-gray-800 dark:text-gray-200">${item.serialNumber}</div>
                         </div>
@@ -417,7 +343,7 @@
             }
 
             showAddModal(scannedValue) {
-                const nextId = this.getNextItemSerialID();
+                const nextId = this.getNextId();
                 document.getElementById('new-serial').value = scannedValue;
                 document.getElementById('new-item-id').value = nextId;
                 this.addModal.classList.remove('hidden');
@@ -429,18 +355,19 @@
 
             confirmAdd() {
                 const serialNumber = document.getElementById('new-serial').value;
-                const itemSerialID = parseInt(document.getElementById('new-item-id').value);
+                const id = parseInt(document.getElementById('new-item-id').value);
                 
-                this.dataset.push({ itemSerialID, serialNumber });
+                this.dataset.push({ id, serialNumber });
                 this.updateDatasetPreview();
+                this.saveDatasetToLocalStorage(); // Save to local storage after adding
                 this.hideAddModal();
                 
-                this.status.textContent = `Added item ${itemSerialID} successfully! Click "Commit Changes" to save.`;
+                this.status.textContent = `Added item ${id}. Dataset saved to local storage.`;
             }
 
-            getNextItemSerialID() {
+            getNextId() {
                 if (this.dataset.length === 0) return 1;
-                return Math.max(...this.dataset.map(item => item.itemSerialID)) + 1;
+                return Math.max(...this.dataset.map(item => item.id)) + 1;
             }
 
             updateDatasetPreview() {
@@ -455,12 +382,12 @@
                 }
                 
                 const lastFive = this.dataset
-                    .sort((a, b) => b.itemSerialID - a.itemSerialID)
+                    .sort((a, b) => b.id - a.id)
                     .slice(0, 5);
                     
                 preview.innerHTML = lastFive.map(item => `
                     <div class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <span class="font-semibold text-sm">ID: ${item.itemSerialID}</span>
+                        <span class="font-semibold text-sm">ID: ${item.id}</span>
                         <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
                     </div>
                 `).join('');
@@ -507,6 +434,10 @@
             }
         }
 
+        const scanner = new WarehouseScanner();
+    </script>
+</body>
+</html>
         const scanner = new WarehouseScanner();
     </script>
 </body>
