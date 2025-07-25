@@ -166,11 +166,12 @@
                 this.scanCooldown = 2000;
                 
                 // GitHub API Configuration
-                // NOTE: Replace these with your actual values!
-                this.githubToken = 'YOUR_GITHUB_PERSONAL_ACCESS_TOKEN';
-                this.githubOwner = 'YOUR_GITHUB_USERNAME';
-                this.githubRepo = 'YOUR_REPOSITORY_NAME';
-                this.githubPath = 'dataset.xml'; // The file path in your repo
+                // WARNING: This token is public! Use a dedicated token with minimal permissions.
+                // Replace these values with your own.
+                this.githubToken = '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';
+                this.githubOwner = 'aqeel1415';
+                this.githubRepo = 'InventoryBC-QR';
+                this.githubPath = 'dataset.xml';
                 this.githubSha = null;
 
                 this.initializeElements();
@@ -274,7 +275,7 @@
 
                 const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/contents/${this.githubPath}`;
                 const payload = {
-                    message: 'Update warehouse dataset from scanner app',
+                    message: `Update from scanner app at ${new Date().toISOString()}`,
                     content: base64Content,
                     sha: this.githubSha
                 };
@@ -295,7 +296,7 @@
                     }
                     
                     const result = await response.json();
-                    this.githubSha = result.content.sha; // Update SHA for next commit
+                    this.githubSha = result.content.sha;
                     this.status.textContent = 'Changes committed successfully!';
 
                 } catch (error) {
@@ -305,8 +306,6 @@
                     this.commitBtn.disabled = false;
                 }
             }
-
-            // ... (rest of the class remains the same) ...
 
             async startCamera() {
                 try {
