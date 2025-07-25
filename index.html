@@ -273,7 +273,7 @@
                 const newXmlString = this.convertToXml(this.dataset);
                 const base64Content = btoa(newXmlString);
 
-                const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/contents/${this.githubPath}`;
+                const url = `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/${this.githubPath}`;
                 const payload = {
                     message: `Update from scanner app at ${new Date().toISOString()}`,
                     content: base64Content,
