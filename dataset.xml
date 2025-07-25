@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inventory>
+    <item>
+        <itemSerialID>1</itemSerialID>
+        <serialNumber>123456789012</serialNumber>
+        <room>1</room>
+        <rack>1</rack>
+        <row>1</row>
+    </item>
+    <item>
+        <itemSerialID>2</itemSerialID>
+        <serialNumber>ABC123DEF456</serialNumber>
+        <room>1</room>
+       <rack>1</rack>
+      <row>1</row>
+    </item>
+</inventory>
