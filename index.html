@@ -147,6 +147,27 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item ID:</label>
                     <input id="new-item-id" type="text" readonly class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
                 </div>
+                
+                <div class="space-y-4 mb-4">
+                    <div>
+                        <label for="new-room" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Room:</label>
+                        <select id="new-room" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                            <option value="Room A">Room A</option>
+                            <option value="Room B">Room B</option>
+                            <option value="Room C">Room C</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new-rack" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rack:</label>
+                        <select id="new-rack" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                            </select>
+                    </div>
+                    <div>
+                        <label for="new-row" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Row:</label>
+                        <select id="new-row" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                            </select>
+                    </div>
+                </div>
                 <div class="flex gap-3 pt-2">
                     <button id="cancel-add" class="flex-1 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                         Cancel
@@ -170,6 +191,7 @@
                 
                 this.initializeElements();
                 this.bindEvents();
+                this.populateDropdowns(); // NEW: Populate dropdowns on initialization
                 this.loadDatasetFromLocalStorage();
             }
 
@@ -185,6 +207,11 @@
                 this.resultModal = document.getElementById('result-modal');
                 this.addModal = document.getElementById('add-modal');
                 this.downloadExcelBtn = document.getElementById('download-excel');
+                
+                // NEW: Dropdown elements
+                this.newRoom = document.getElementById('new-room');
+                this.newRack = document.getElementById('new-rack');
+                this.newRow = document.getElementById('new-row');
             }
 
             bindEvents() {
@@ -202,6 +229,26 @@
                         }
                     });
                 });
+            }
+
+            // NEW: Populate the rack and row dropdowns
+            populateDropdowns() {
+                // Populate Racks (A-Z)
+                for (let i = 65; i <= 90; i++) {
+                    const rackLetter = String.fromCharCode(i);
+                    const option = document.createElement('option');
+                    option.value = rackLetter;
+                    option.textContent = rackLetter;
+                    this.newRack.appendChild(option);
+                }
+
+                // Populate Rows (1-50)
+                for (let i = 1; i <= 50; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i;
+                    this.newRow.appendChild(option);
+                }
             }
 
             loadDatasetFromLocalStorage() {
@@ -232,14 +279,10 @@
                     return;
                 }
 
-                // Convert the JSON array to a worksheet
                 const worksheet = XLSX.utils.json_to_sheet(this.dataset);
-                
-                // Create a new workbook and add the worksheet
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
                 
-                // Write the workbook and trigger the download
                 XLSX.writeFile(workbook, "scanned_inventory.xlsx");
             }
 
@@ -317,6 +360,8 @@
                             <div class="font-semibold text-green-700 dark:text-green-400 text-lg">${item.id}</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Serial Number:</div>
                             <div class="font-mono text-sm break-all text-gray-800 dark:text-gray-200">${item.serialNumber}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Location:</div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</div>
                         </div>
                         <button onclick="document.getElementById('result-modal').classList.add('hidden')" 
                                 class="w-full px-4 py-2 bg-[#5D5CDE] text-white hover:bg-purple-700 rounded-lg transition-colors">
@@ -367,7 +412,14 @@
                 const serialNumber = document.getElementById('new-serial').value;
                 const id = parseInt(document.getElementById('new-item-id').value);
                 
-                this.dataset.push({ id, serialNumber });
+                // NEW: Read values from the new dropdowns
+                const room = this.newRoom.value;
+                const rack = this.newRack.value;
+                const row = this.newRow.value;
+                
+                // NEW: Add the new properties to the item object
+                this.dataset.push({ id, serialNumber, room, rack, row });
+                
                 this.updateDatasetPreview();
                 this.saveDatasetToLocalStorage(); // Save to local storage after adding
                 this.hideAddModal();
@@ -397,8 +449,11 @@
                     
                 preview.innerHTML = lastFive.map(item => `
                     <div class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <span class="font-semibold text-sm">ID: ${item.id}</span>
-                        <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
+                        <div class="flex-grow">
+                            <span class="font-semibold text-sm">ID: ${item.id}</span>
+                            <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
+                        </div>
+                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
                     </div>
                 `).join('');
             }
