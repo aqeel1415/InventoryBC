@@ -6,6 +6,9 @@
     <title>Barcode/QR Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
         #scanner-container {
             position: relative;
@@ -106,8 +109,8 @@
                     <button id="stop-camera" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors disabled:opacity-50" disabled>
                         Stop Camera
                     </button>
-                    <button id="save-data" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
-                        Download Dataset
+                    <button id="download-excel" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
+                        Download Dataset (Excel)
                     </button>
                 </div>
             </div>
@@ -181,13 +184,13 @@
                 this.lastScanValue = document.getElementById('last-scan-value');
                 this.resultModal = document.getElementById('result-modal');
                 this.addModal = document.getElementById('add-modal');
-                this.saveBtn = document.getElementById('save-data');
+                this.downloadExcelBtn = document.getElementById('download-excel');
             }
 
             bindEvents() {
                 this.startBtn.addEventListener('click', () => this.startCamera());
                 this.stopBtn.addEventListener('click', () => this.stopCamera());
-                this.saveBtn.addEventListener('click', () => this.downloadDataset());
+                this.downloadExcelBtn.addEventListener('click', () => this.downloadExcel());
                 
                 document.getElementById('cancel-add').addEventListener('click', () => this.hideAddModal());
                 document.getElementById('confirm-add').addEventListener('click', () => this.confirmAdd());
@@ -223,14 +226,21 @@
                 localStorage.setItem('inventoryDataset', JSON.stringify(this.dataset));
             }
 
-            downloadDataset() {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.dataset, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "scanned_inventory.json");
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
+            downloadExcel() {
+                if (this.dataset.length === 0) {
+                    alert('Dataset is empty! Scan some items first.');
+                    return;
+                }
+
+                // Convert the JSON array to a worksheet
+                const worksheet = XLSX.utils.json_to_sheet(this.dataset);
+                
+                // Create a new workbook and add the worksheet
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
+                
+                // Write the workbook and trigger the download
+                XLSX.writeFile(workbook, "scanned_inventory.xlsx");
             }
 
             async startCamera() {
@@ -434,10 +444,6 @@
             }
         }
 
-        const scanner = new WarehouseScanner();
-    </script>
-</body>
-</html>
         const scanner = new WarehouseScanner();
     </script>
 </body>
