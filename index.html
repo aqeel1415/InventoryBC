@@ -82,22 +82,6 @@
                 Scan barcodes and QR codes to manage inventory
             </p>
 
-            <div class="mb-6 space-y-2">
-                <label for="xml-upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Import XML Data
-                </label>
-                <div class="flex items-center space-x-2">
-                    <input type="file" id="xml-upload" accept=".xml" class="flex-1 block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-[#5D5CDE] file:text-white
-                        hover:file:bg-purple-700
-                    "/>
-                </div>
-                <div id="xml-status" class="text-xs text-gray-500 dark:text-gray-400">No XML file loaded.</div>
-            </div>
-
             <div id="scanner-container" class="mb-6">
                 <video id="video" autoplay muted playsinline class="hidden"></video>
                 <div class="scan-overlay hidden"></div>
@@ -113,7 +97,7 @@
 
             <div class="space-y-4">
                 <div id="status" class="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Ready to scan
+                    Initializing...
                 </div>
                 
                 <div id="last-scan" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 hidden">
@@ -202,7 +186,7 @@
                 this.codeReader = new ZXing.BrowserMultiFormatReader();
                 this.isScanning = false;
                 this.dataset = [];
-                this.xmlDataset = []; // NEW: Array to hold parsed XML data
+                this.xmlDataset = []; // Array to hold parsed XML data
                 this.lastScanTime = 0;
                 this.scanCooldown = 2000;
                 
@@ -210,6 +194,7 @@
                 this.bindEvents();
                 this.populateDropdowns();
                 this.loadDatasetFromLocalStorage();
+                this.loadXmlData(); // NEW: Automatically load XML data
             }
 
             initializeElements() {
@@ -228,10 +213,6 @@
                 this.newRoom = document.getElementById('new-room');
                 this.newRack = document.getElementById('new-rack');
                 this.newRow = document.getElementById('new-row');
-
-                // NEW: XML elements
-                this.xmlUpload = document.getElementById('xml-upload');
-                this.xmlStatus = document.getElementById('xml-status');
             }
 
             bindEvents() {
@@ -249,38 +230,29 @@
                         }
                     });
                 });
-
-                // NEW: XML file upload event listener
-                this.xmlUpload.addEventListener('change', (event) => this.handleXmlUpload(event));
             }
 
-            // NEW: Function to handle XML file upload and parsing
-            handleXmlUpload(event) {
-                const file = event.target.files[0];
-                if (!file) {
-                    this.xmlStatus.textContent = "No file selected.";
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const text = e.target.result;
-                        const parser = new DOMParser();
-                        const xmlDoc = parser.parseFromString(text, "text/xml");
-                        
-                        this.xmlDataset = this.parseXmlData(xmlDoc);
-                        this.xmlStatus.textContent = `XML file "${file.name}" loaded successfully. Found ${this.xmlDataset.length} items.`;
-                    } catch (error) {
-                        console.error('Error parsing XML:', error);
-                        this.xmlStatus.textContent = `Error parsing XML file. Please check the file format.`;
-                        this.xmlDataset = [];
+            // NEW: Function to load XML data from a predefined path
+            async loadXmlData() {
+                this.status.textContent = "Loading XML data...";
+                try {
+                    const response = await fetch('data/inventory.xml');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                };
-                reader.readAsText(file);
+                    const text = await response.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(text, "text/xml");
+                    
+                    this.xmlDataset = this.parseXmlData(xmlDoc);
+                    this.status.textContent = `XML data loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
+                } catch (error) {
+                    console.error('Error loading XML file:', error);
+                    this.status.textContent = 'Could not load XML data. Only local dataset will be used.';
+                }
             }
 
-            // NEW: Function to parse the XML data into a JavaScript array of objects
+            // Function to parse the XML data into a JavaScript array of objects
             parseXmlData(xmlDoc) {
                 const items = xmlDoc.getElementsByTagName('item');
                 const parsedData = [];
@@ -321,14 +293,11 @@
                 if (storedData) {
                     try {
                         this.dataset = JSON.parse(storedData);
-                        this.status.textContent = 'Loaded dataset from previous session. Ready to scan.';
                     } catch (error) {
                         console.error('Error parsing local storage data:', error);
-                        this.status.textContent = 'Error loading data from local storage. Starting fresh.';
                         this.dataset = [];
                     }
                 } else {
-                    this.status.textContent = 'Ready to scan.';
                     this.dataset = [];
                 }
                 this.updateDatasetPreview();
@@ -446,7 +415,6 @@
                 this.resultModal.classList.remove('hidden');
             }
 
-            // NEW: Modal to show results from the XML file
             showXmlResult(item) {
                 const modalContent = document.getElementById('modal-content');
                 modalContent.innerHTML = `
