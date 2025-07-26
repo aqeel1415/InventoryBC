@@ -270,7 +270,7 @@
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     
                     this.xmlDataset = this.parseXmlData(xmlDoc);
-                    this.status.textContent = `database loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
+                    this.status.textContent = `The Database is loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
                 } catch (error) {
                     console.error('Error loading XML file:', error);
                     this.status.textContent = 'Could not load database. Only your data will be used.';
@@ -309,7 +309,6 @@
                     this.newRow.appendChild(option);
                 }
             }
-
             loadDatasetFromLocalStorage() {
                 const storedData = localStorage.getItem('inventoryDataset');
                 if (storedData) {
