@@ -76,7 +76,7 @@
     <div class="container mx-auto px-4 py-6 max-w-md">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
             <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-                📱 Warehouse Scanner
+                📱 Inventory Smartphone Scanner
             </h1>
             <p class="text-gray-600 dark:text-gray-300 text-center text-sm mb-6">
                 Scan barcodes and QR codes to manage inventory
@@ -123,7 +123,7 @@
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
             <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                📊 Dataset Preview (Last 5 items)
+                📊 Data Preview (Last 5 items)
             </h2>
             <div id="dataset-preview" class="space-y-2">
                 </div>
@@ -157,7 +157,7 @@
                     <div>
                         <label for="new-room" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Room:</label>
                         <select id="new-room" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
-                            <option value="Room A">Projects Items Room</option>
+                            <option value="Room A">Room 1</option>
                             <option value="Room B">Room 2</option>
                             <option value="Room C">Room 3</option>
                         </select>
@@ -214,8 +214,6 @@
                 this.resultModal = document.getElementById('result-modal');
                 this.addModal = document.getElementById('add-modal');
                 this.downloadExcelBtn = document.getElementById('download-excel');
-                
-                // NEW: Clear dataset button
                 this.clearDatasetBtn = document.getElementById('clear-dataset');
                 
                 this.newRoom = document.getElementById('new-room');
@@ -227,8 +225,6 @@
                 this.startBtn.addEventListener('click', () => this.startCamera());
                 this.stopBtn.addEventListener('click', () => this.stopCamera());
                 this.downloadExcelBtn.addEventListener('click', () => this.downloadExcel());
-                
-                // NEW: Event listener for the clear button
                 this.clearDatasetBtn.addEventListener('click', () => this.clearDataset());
 
                 document.getElementById('cancel-add').addEventListener('click', () => this.hideAddModal());
@@ -243,27 +239,27 @@
                 });
             }
 
-            // NEW: Function to clear the local storage dataset
             clearDataset() {
-                if (confirm('Are you sure you want to clear your data?')) {
+                if (confirm('Are you sure you want to clear the data?')) {
                     localStorage.removeItem('inventoryDataset');
-                    this.dataset = []; // Clear the in-memory array
-                    this.updateDatasetPreview(); // Update the UI
+                    this.dataset = [];
+                    this.updateDatasetPreview();
                     this.status.textContent = 'Local dataset has been cleared.';
                 }
             }
 
-// New method inside the WarehouseScanner class
-deleteItem(itemId) {
-    if (confirm(`Are you sure you want to delete item with ID ${itemId}?`)) {
-        this.dataset = this.dataset.filter(item => item.id !== itemId);
-        this.saveDatasetToLocalStorage();
-        this.updateDatasetPreview();
-        this.status.textContent = `Item with ID ${itemId} has been deleted.`;
-    }
-}
+            // NEW: Function to delete a single item by its ID
+            deleteItem(itemId) {
+                if (confirm(`Are you sure you want to delete item with ID ${itemId}?`)) {
+                    this.dataset = this.dataset.filter(item => item.id !== itemId);
+                    this.saveDatasetToLocalStorage();
+                    this.updateDatasetPreview();
+                    this.status.textContent = `Item with ID ${itemId} has been deleted.`;
+                }
+            }
+
             async loadXmlData() {
-                this.status.textContent = "Loading XML data...";
+                this.status.textContent = "Loading database...";
                 try {
                     const response = await fetch('data/inventory.xml');
                     if (!response.ok) {
@@ -274,10 +270,10 @@ deleteItem(itemId) {
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     
                     this.xmlDataset = this.parseXmlData(xmlDoc);
-                    this.status.textContent = `XML data loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
+                    this.status.textContent = `database loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
                 } catch (error) {
                     console.error('Error loading XML file:', error);
-                    this.status.textContent = 'Could not load database data. Only your data will be used.';
+                    this.status.textContent = 'Could not load database. Only your data will be used.';
                 }
             }
 
@@ -289,6 +285,9 @@ deleteItem(itemId) {
                     parsedData.push({
                         id: item.getElementsByTagName('ItemSerialID')[0]?.textContent,
                         serialNumber: item.getElementsByTagName('SerialNumber')[0]?.textContent,
+                        room: item.getElementsByTagName('room')[0]?.textContent,
+                        rack: item.getElementsByTagName('rack')[0]?.textContent,
+                        row: item.getElementsByTagName('row')[0]?.textContent,
                     });
                 }
                 return parsedData;
@@ -317,7 +316,7 @@ deleteItem(itemId) {
                     try {
                         this.dataset = JSON.parse(storedData);
                     } catch (error) {
-                        console.error('Error parsing data:', error);
+                        console.error('Error parsing your data:', error);
                         this.dataset = [];
                     }
                 } else {
@@ -332,7 +331,7 @@ deleteItem(itemId) {
 
             downloadExcel() {
                 if (this.dataset.length === 0) {
-                    alert('Scan some items first.');
+                    alert('Dataset is empty! Scan some items first.');
                     return;
                 }
 
@@ -423,6 +422,8 @@ deleteItem(itemId) {
                             <div class="font-semibold text-green-700 dark:text-green-400 text-lg">${item.id}</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Serial Number:</div>
                             <div class="font-mono text-sm break-all text-gray-800 dark:text-gray-200">${item.serialNumber}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Location:</div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</div>
                         </div>
                         <button onclick="document.getElementById('result-modal').classList.add('hidden')" 
                                 class="w-full px-4 py-2 bg-[#5D5CDE] text-white hover:bg-purple-700 rounded-lg transition-colors">
@@ -438,7 +439,7 @@ deleteItem(itemId) {
                 modalContent.innerHTML = `
                     <div class="text-center">
                         <div class="text-4xl mb-3">📁</div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in the database!</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in XML!</h3>
                         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
                             <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item ID:</div>
                             <div class="font-semibold text-blue-700 dark:text-blue-400 text-lg">${item.id}</div>
@@ -503,7 +504,7 @@ deleteItem(itemId) {
                 this.saveDatasetToLocalStorage();
                 this.hideAddModal();
                 
-                this.status.textContent = `Added item ${id}. Data saved.`;
+                this.status.textContent = `Added item ${id}. Dataset saved to local storage.`;
             }
 
             getNextId() {
@@ -532,25 +533,16 @@ deleteItem(itemId) {
                             <span class="font-semibold text-sm">ID: ${item.id}</span>
                             <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
                         </div>
-                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
+                            <button onclick="scanner.deleteItem(${item.id})" class="text-red-500 hover:text-red-600 transition-colors">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                 `).join('');
             }
-// Inside the `updateDatasetPreview` method
-preview.innerHTML = lastFive.map(item => `
-    <div class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-        <div class="flex-grow">
-            <span class="font-semibold text-sm">ID: ${item.id}</span>
-            <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
-        </div>
-        <div class="flex items-center space-x-2">
-            <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
-            <button onclick="scanner.deleteItem(${item.id})" class="text-red-500 hover:text-red-600 transition-colors">
-                🗑️
-            </button>
-        </div>
-    </div>
-`).join('');
+
             stopCamera() {
                 this.isScanning = false;
                 
@@ -593,10 +585,6 @@ preview.innerHTML = lastFive.map(item => `
         }
 
         const scanner = new WarehouseScanner();
-
-
-
-        
     </script>
 </body>
 </html>
