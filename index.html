@@ -110,12 +110,12 @@
                         Stop Camera
                     </button>
                     <button id="download-excel" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
-                        Download Dataset (Excel)
+                        Download Data
                     </button>
                 </div>
                 <div class="mt-3">
                     <button id="clear-dataset" class="w-full bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors">
-                        Clear Local Dataset
+                        Clear Data
                     </button>
                 </div>
             </div>
@@ -157,9 +157,9 @@
                     <div>
                         <label for="new-room" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Room:</label>
                         <select id="new-room" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
-                            <option value="Room A">Room A</option>
-                            <option value="Room B">Room B</option>
-                            <option value="Room C">Room C</option>
+                            <option value="Room A">Projects Items Room</option>
+                            <option value="Room B">Room 2</option>
+                            <option value="Room C">Room 3</option>
                         </select>
                     </div>
                     <div>
@@ -245,7 +245,7 @@
 
             // NEW: Function to clear the local storage dataset
             clearDataset() {
-                if (confirm('Are you sure you want to clear the local dataset? This action cannot be undone.')) {
+                if (confirm('Are you sure you want to clear your data?')) {
                     localStorage.removeItem('inventoryDataset');
                     this.dataset = []; // Clear the in-memory array
                     this.updateDatasetPreview(); // Update the UI
@@ -268,7 +268,7 @@
                     this.status.textContent = `XML data loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
                 } catch (error) {
                     console.error('Error loading XML file:', error);
-                    this.status.textContent = 'Could not load XML data. Only local dataset will be used.';
+                    this.status.textContent = 'Could not load database data. Only your data will be used.';
                 }
             }
 
@@ -280,9 +280,6 @@
                     parsedData.push({
                         id: item.getElementsByTagName('ItemSerialID')[0]?.textContent,
                         serialNumber: item.getElementsByTagName('SerialNumber')[0]?.textContent,
-                        room: item.getElementsByTagName('room')[0]?.textContent,
-                        rack: item.getElementsByTagName('rack')[0]?.textContent,
-                        row: item.getElementsByTagName('row')[0]?.textContent,
                     });
                 }
                 return parsedData;
@@ -311,7 +308,7 @@
                     try {
                         this.dataset = JSON.parse(storedData);
                     } catch (error) {
-                        console.error('Error parsing local storage data:', error);
+                        console.error('Error parsing data:', error);
                         this.dataset = [];
                     }
                 } else {
@@ -326,7 +323,7 @@
 
             downloadExcel() {
                 if (this.dataset.length === 0) {
-                    alert('Dataset is empty! Scan some items first.');
+                    alert('Scan some items first.');
                     return;
                 }
 
@@ -417,8 +414,6 @@
                             <div class="font-semibold text-green-700 dark:text-green-400 text-lg">${item.id}</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Serial Number:</div>
                             <div class="font-mono text-sm break-all text-gray-800 dark:text-gray-200">${item.serialNumber}</div>
-                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Location:</div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</div>
                         </div>
                         <button onclick="document.getElementById('result-modal').classList.add('hidden')" 
                                 class="w-full px-4 py-2 bg-[#5D5CDE] text-white hover:bg-purple-700 rounded-lg transition-colors">
@@ -434,7 +429,7 @@
                 modalContent.innerHTML = `
                     <div class="text-center">
                         <div class="text-4xl mb-3">📁</div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in XML!</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in the database!</h3>
                         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
                             <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item ID:</div>
                             <div class="font-semibold text-blue-700 dark:text-blue-400 text-lg">${item.id}</div>
@@ -499,7 +494,7 @@
                 this.saveDatasetToLocalStorage();
                 this.hideAddModal();
                 
-                this.status.textContent = `Added item ${id}. Dataset saved to local storage.`;
+                this.status.textContent = `Added item ${id}. Data saved.`;
             }
 
             getNextId() {
