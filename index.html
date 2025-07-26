@@ -244,7 +244,7 @@
                     localStorage.removeItem('inventoryDataset');
                     this.dataset = [];
                     this.updateDatasetPreview();
-                    this.status.textContent = 'Local dataset has been cleared.';
+                    this.status.textContent = 'Your data has been cleared.';
                 }
             }
 
@@ -254,7 +254,7 @@
                     this.dataset = this.dataset.filter(item => item.id !== itemId);
                     this.saveDatasetToLocalStorage();
                     this.updateDatasetPreview();
-                    this.status.textContent = `Item with ID ${itemId} has been deleted.`;
+                    this.status.textContent = `Item with ItemSerialID ${itemId} has been deleted.`;
                 }
             }
 
@@ -331,7 +331,7 @@
 
             downloadExcel() {
                 if (this.dataset.length === 0) {
-                    alert('Dataset is empty! Scan some items first.');
+                   alert('Scan some items first.');
                     return;
                 }
 
@@ -504,7 +504,7 @@
                 this.saveDatasetToLocalStorage();
                 this.hideAddModal();
                 
-                this.status.textContent = `Added item ${id}. Dataset saved to local storage.`;
+                this.status.textContent = `Added item ${id}. Data saved.`;
             }
 
             getNextId() {
