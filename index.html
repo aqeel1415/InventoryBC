@@ -278,8 +278,8 @@
                 for (let i = 0; i < items.length; i++) {
                     const item = items[i];
                     parsedData.push({
-                        id: item.getElementsByTagName('id')[0]?.textContent,
-                        serialNumber: item.getElementsByTagName('serialNumber')[0]?.textContent,
+                        id: item.getElementsByTagName('ItemSerialID')[0]?.textContent,
+                        serialNumber: item.getElementsByTagName('SerialNumber')[0]?.textContent,
                         room: item.getElementsByTagName('room')[0]?.textContent,
                         rack: item.getElementsByTagName('rack')[0]?.textContent,
                         row: item.getElementsByTagName('row')[0]?.textContent,
