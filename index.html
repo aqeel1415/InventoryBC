@@ -82,6 +82,22 @@
                 Scan barcodes and QR codes to manage inventory
             </p>
 
+            <div class="mb-6 space-y-2">
+                <label for="xml-upload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Import XML Data
+                </label>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="xml-upload" accept=".xml" class="flex-1 block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-[#5D5CDE] file:text-white
+                        hover:file:bg-purple-700
+                    "/>
+                </div>
+                <div id="xml-status" class="text-xs text-gray-500 dark:text-gray-400">No XML file loaded.</div>
+            </div>
+
             <div id="scanner-container" class="mb-6">
                 <video id="video" autoplay muted playsinline class="hidden"></video>
                 <div class="scan-overlay hidden"></div>
@@ -186,12 +202,13 @@
                 this.codeReader = new ZXing.BrowserMultiFormatReader();
                 this.isScanning = false;
                 this.dataset = [];
+                this.xmlDataset = []; // NEW: Array to hold parsed XML data
                 this.lastScanTime = 0;
                 this.scanCooldown = 2000;
                 
                 this.initializeElements();
                 this.bindEvents();
-                this.populateDropdowns(); // NEW: Populate dropdowns on initialization
+                this.populateDropdowns();
                 this.loadDatasetFromLocalStorage();
             }
 
@@ -208,10 +225,13 @@
                 this.addModal = document.getElementById('add-modal');
                 this.downloadExcelBtn = document.getElementById('download-excel');
                 
-                // NEW: Dropdown elements
                 this.newRoom = document.getElementById('new-room');
                 this.newRack = document.getElementById('new-rack');
                 this.newRow = document.getElementById('new-row');
+
+                // NEW: XML elements
+                this.xmlUpload = document.getElementById('xml-upload');
+                this.xmlStatus = document.getElementById('xml-status');
             }
 
             bindEvents() {
@@ -229,9 +249,54 @@
                         }
                     });
                 });
+
+                // NEW: XML file upload event listener
+                this.xmlUpload.addEventListener('change', (event) => this.handleXmlUpload(event));
             }
 
-            // NEW: Populate the rack and row dropdowns
+            // NEW: Function to handle XML file upload and parsing
+            handleXmlUpload(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    this.xmlStatus.textContent = "No file selected.";
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const text = e.target.result;
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(text, "text/xml");
+                        
+                        this.xmlDataset = this.parseXmlData(xmlDoc);
+                        this.xmlStatus.textContent = `XML file "${file.name}" loaded successfully. Found ${this.xmlDataset.length} items.`;
+                    } catch (error) {
+                        console.error('Error parsing XML:', error);
+                        this.xmlStatus.textContent = `Error parsing XML file. Please check the file format.`;
+                        this.xmlDataset = [];
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // NEW: Function to parse the XML data into a JavaScript array of objects
+            parseXmlData(xmlDoc) {
+                const items = xmlDoc.getElementsByTagName('item');
+                const parsedData = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    parsedData.push({
+                        id: item.getElementsByTagName('id')[0]?.textContent,
+                        serialNumber: item.getElementsByTagName('serialNumber')[0]?.textContent,
+                        room: item.getElementsByTagName('room')[0]?.textContent,
+                        rack: item.getElementsByTagName('rack')[0]?.textContent,
+                        row: item.getElementsByTagName('row')[0]?.textContent,
+                    });
+                }
+                return parsedData;
+            }
+
             populateDropdowns() {
                 // Populate Racks (A-Z)
                 for (let i = 65; i <= 90; i++) {
@@ -340,13 +405,22 @@
                 this.lastScan.classList.remove('hidden');
                 this.lastScanValue.textContent = scannedValue;
                 
+                // First, check the local dataset
                 const existingItem = this.dataset.find(item => item.serialNumber === scannedValue);
-                
                 if (existingItem) {
                     this.showFoundResult(existingItem);
-                } else {
-                    this.showNotFoundResult(scannedValue);
+                    return;
                 }
+                
+                // If not in local dataset, check the XML data
+                const xmlItem = this.xmlDataset.find(item => item.serialNumber === scannedValue);
+                if (xmlItem) {
+                    this.showXmlResult(xmlItem);
+                    return;
+                }
+                
+                // If not found in either, show the "Not Found" modal
+                this.showNotFoundResult(scannedValue);
             }
 
             showFoundResult(item) {
@@ -372,6 +446,31 @@
                 this.resultModal.classList.remove('hidden');
             }
 
+            // NEW: Modal to show results from the XML file
+            showXmlResult(item) {
+                const modalContent = document.getElementById('modal-content');
+                modalContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">📁</div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in XML!</h3>
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item ID:</div>
+                            <div class="font-semibold text-blue-700 dark:text-blue-400 text-lg">${item.id}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Serial Number:</div>
+                            <div class="font-mono text-sm break-all text-gray-800 dark:text-gray-200">${item.serialNumber}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-1">Location:</div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</div>
+                        </div>
+                        <button onclick="document.getElementById('result-modal').classList.add('hidden')" 
+                                class="w-full px-4 py-2 bg-[#5D5CDE] text-white hover:bg-purple-700 rounded-lg transition-colors">
+                            Continue Scanning
+                        </button>
+                    </div>
+                `;
+                this.resultModal.classList.remove('hidden');
+            }
+
+
             showNotFoundResult(scannedValue) {
                 const modalContent = document.getElementById('modal-content');
                 modalContent.innerHTML = `
@@ -386,10 +485,6 @@
                             <button onclick="document.getElementById('result-modal').classList.add('hidden'); scanner.showAddModal('${scannedValue}')" 
                                     class="w-full px-4 py-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors">
                                 Add to Dataset
-                            </button>
-                            <button onclick="document.getElementById('result-modal').classList.add('hidden')" 
-                                    class="w-full px-4 py-2 bg-gray-500 text-white hover:bg-gray-600 rounded-lg transition-colors">
-                                Continue Scanning
                             </button>
                         </div>
                     </div>
@@ -412,16 +507,14 @@
                 const serialNumber = document.getElementById('new-serial').value;
                 const id = parseInt(document.getElementById('new-item-id').value);
                 
-                // NEW: Read values from the new dropdowns
                 const room = this.newRoom.value;
                 const rack = this.newRack.value;
                 const row = this.newRow.value;
                 
-                // NEW: Add the new properties to the item object
                 this.dataset.push({ id, serialNumber, room, rack, row });
                 
                 this.updateDatasetPreview();
-                this.saveDatasetToLocalStorage(); // Save to local storage after adding
+                this.saveDatasetToLocalStorage();
                 this.hideAddModal();
                 
                 this.status.textContent = `Added item ${id}. Dataset saved to local storage.`;
