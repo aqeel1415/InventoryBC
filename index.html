@@ -253,6 +253,15 @@
                 }
             }
 
+// New method inside the WarehouseScanner class
+deleteItem(itemId) {
+    if (confirm(`Are you sure you want to delete item with ID ${itemId}?`)) {
+        this.dataset = this.dataset.filter(item => item.id !== itemId);
+        this.saveDatasetToLocalStorage();
+        this.updateDatasetPreview();
+        this.status.textContent = `Item with ID ${itemId} has been deleted.`;
+    }
+}
             async loadXmlData() {
                 this.status.textContent = "Loading XML data...";
                 try {
@@ -527,7 +536,21 @@
                     </div>
                 `).join('');
             }
-
+// Inside the `updateDatasetPreview` method
+preview.innerHTML = lastFive.map(item => `
+    <div class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex-grow">
+            <span class="font-semibold text-sm">ID: ${item.id}</span>
+            <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
+            <button onclick="scanner.deleteItem(${item.id})" class="text-red-500 hover:text-red-600 transition-colors">
+                🗑️
+            </button>
+        </div>
+    </div>
+`).join('');
             stopCamera() {
                 this.isScanning = false;
                 
@@ -571,31 +594,8 @@
 
         const scanner = new WarehouseScanner();
 
-// Inside the `updateDatasetPreview` method
-preview.innerHTML = lastFive.map(item => `
-    <div class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-        <div class="flex-grow">
-            <span class="font-semibold text-sm">ID: ${item.id}</span>
-            <span class="font-mono text-xs text-gray-600 dark:text-gray-400 truncate ml-2">${item.serialNumber}</span>
-        </div>
-        <div class="flex items-center space-x-2">
-            <span class="text-xs font-medium text-gray-800 dark:text-gray-200">${item.room} / ${item.rack}${item.row}</span>
-            <button onclick="scanner.deleteItem(${item.id})" class="text-red-500 hover:text-red-600 transition-colors">
-                🗑️
-            </button>
-        </div>
-    </div>
-`).join('');
 
-// New method inside the WarehouseScanner class
-deleteItem(itemId) {
-    if (confirm(`Are you sure you want to delete item with ID ${itemId}?`)) {
-        this.dataset = this.dataset.filter(item => item.id !== itemId);
-        this.saveDatasetToLocalStorage();
-        this.updateDatasetPreview();
-        this.status.textContent = `Item with ID ${itemId} has been deleted.`;
-    }
-}
+
         
     </script>
 </body>
