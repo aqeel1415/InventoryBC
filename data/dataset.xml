@@ -1,11 +1,23 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <inventory>
     <item>
-        <itemSerialID>1</itemSerialID>
-        <serialNumber>123456789012</serialNumber>
+        <id>101</id>
+        <serialNumber>ABCD123456</serialNumber>
+        <room>Room X</room>
+        <rack>F</rack>
+        <row>15</row>
     </item>
     <item>
-        <itemSerialID>2</itemSerialID>
-        <serialNumber>ABC123DEF456</serialNumber>
+        <id>102</id>
+        <serialNumber>EFGH789012</serialNumber>
+        <room>Room Y</room>
+        <rack>M</rack>
+        <row>30</row>
+    </item>
+    <item>
+        <id>103</id>
+        <serialNumber>IJKL345678</serialNumber>
+        <room>Room Z</room>
+        <rack>P</rack>
+        <row>42</row>
     </item>
 </inventory>
