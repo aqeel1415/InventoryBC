@@ -76,7 +76,7 @@
     <div class="container mx-auto px-4 py-6 max-w-md">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
             <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-                📱 Inventory Smartphone Scanner
+                📱 Warehouse Scanner
             </h1>
             <p class="text-gray-600 dark:text-gray-300 text-center text-sm mb-6">
                 Scan barcodes and QR codes to manage inventory
@@ -110,12 +110,12 @@
                         Stop Camera
                     </button>
                     <button id="download-excel" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
-                        Download Data
+                        Download Database (Excel)
                     </button>
                 </div>
                 <div class="mt-3">
-                    <button id="clear-dataset" class="w-full bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors">
-                        Clear Data
+                    <button id="clear-database" class="w-full bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors">
+                        Clear Local Database
                     </button>
                 </div>
             </div>
@@ -123,9 +123,9 @@
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
             <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                📊 Data Preview (Last 5 items)
+                📊 Database Preview (Last 5 items)
             </h2>
-            <div id="dataset-preview" class="space-y-2">
+            <div id="database-preview" class="space-y-2">
                 </div>
             <div class="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
                 Total items: <span id="total-items">0</span>
@@ -155,11 +155,25 @@
                 
                 <div class="space-y-4 mb-4">
                     <div>
+                        <label for="new-manufacturer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Manufacturer:</label>
+                        <select id="new-manufacturer" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                            </select>
+                    </div>
+                    <div>
+                        <label for="new-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category:</label>
+                        <select id="new-category" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                            </select>
+                    </div>
+                    <div>
+                        <label for="new-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Model / Part Number:</label>
+                        <input id="new-model" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
+                    </div>
+                    <div>
                         <label for="new-room" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Room:</label>
                         <select id="new-room" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base">
-                            <option value="Room A">Room 1</option>
-                            <option value="Room B">Room 2</option>
-                            <option value="Room C">Room 3</option>
+                            <option value="Room A">Room A</option>
+                            <option value="Room B">Room B</option>
+                            <option value="Room C">Room C</option>
                         </select>
                     </div>
                     <div>
@@ -190,15 +204,19 @@
             constructor() {
                 this.codeReader = new ZXing.BrowserMultiFormatReader();
                 this.isScanning = false;
-                this.dataset = [];
-                this.xmlDataset = []; 
+                this.database = [];
+                this.xmlDatabase = []; 
                 this.lastScanTime = 0;
                 this.scanCooldown = 2000;
                 
+                // NEW: Dropdown data
+                this.manufacturers = ['Dell', 'HP', 'Cisco', 'Lenovo', 'Samsung', 'LG', 'Others'];
+                this.categories = ['Laptop', 'Desktop', 'Server', 'Monitor', 'Networking', 'Peripheral', 'Accessory', 'Others'];
+
                 this.initializeElements();
                 this.bindEvents();
                 this.populateDropdowns();
-                this.loadDatasetFromLocalStorage();
+                this.loadDatabaseFromLocalStorage();
                 this.loadXmlData(); 
             }
 
@@ -214,7 +232,12 @@
                 this.resultModal = document.getElementById('result-modal');
                 this.addModal = document.getElementById('add-modal');
                 this.downloadExcelBtn = document.getElementById('download-excel');
-                this.clearDatasetBtn = document.getElementById('clear-dataset');
+                this.clearDatabaseBtn = document.getElementById('clear-database');
+                
+                // NEW: New dropdown and input elements
+                this.newManufacturer = document.getElementById('new-manufacturer');
+                this.newCategory = document.getElementById('new-category');
+                this.newModel = document.getElementById('new-model');
                 
                 this.newRoom = document.getElementById('new-room');
                 this.newRack = document.getElementById('new-rack');
@@ -225,7 +248,7 @@
                 this.startBtn.addEventListener('click', () => this.startCamera());
                 this.stopBtn.addEventListener('click', () => this.stopCamera());
                 this.downloadExcelBtn.addEventListener('click', () => this.downloadExcel());
-                this.clearDatasetBtn.addEventListener('click', () => this.clearDataset());
+                this.clearDatabaseBtn.addEventListener('click', () => this.clearDatabase());
 
                 document.getElementById('cancel-add').addEventListener('click', () => this.hideAddModal());
                 document.getElementById('confirm-add').addEventListener('click', () => this.confirmAdd());
@@ -239,27 +262,26 @@
                 });
             }
 
-            clearDataset() {
-                if (confirm('Are you sure you want to clear the data?')) {
-                    localStorage.removeItem('inventoryDataset');
-                    this.dataset = [];
-                    this.updateDatasetPreview();
-                    this.status.textContent = 'Your data has been cleared.';
+            clearDatabase() {
+                if (confirm('Are you sure you want to clear the local database? This action cannot be undone.')) {
+                    localStorage.removeItem('inventoryDatabase');
+                    this.database = [];
+                    this.updateDatabasePreview();
+                    this.status.textContent = 'Local database has been cleared.';
                 }
             }
 
-            // NEW: Function to delete a single item by its ID
             deleteItem(itemId) {
                 if (confirm(`Are you sure you want to delete item with ID ${itemId}?`)) {
-                    this.dataset = this.dataset.filter(item => item.id !== itemId);
-                    this.saveDatasetToLocalStorage();
-                    this.updateDatasetPreview();
-                    this.status.textContent = `Item with ItemSerialID ${itemId} has been deleted.`;
+                    this.database = this.database.filter(item => item.id !== itemId);
+                    this.saveDatabaseToLocalStorage();
+                    this.updateDatabasePreview();
+                    this.status.textContent = `Item with ID ${itemId} has been deleted.`;
                 }
             }
 
             async loadXmlData() {
-                this.status.textContent = "Loading database...";
+                this.status.textContent = "Loading XML data...";
                 try {
                     const response = await fetch('data/inventory.xml');
                     if (!response.ok) {
@@ -269,11 +291,11 @@
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(text, "text/xml");
                     
-                    this.xmlDataset = this.parseXmlData(xmlDoc);
-                    this.status.textContent = `The Database is loaded successfully. Found ${this.xmlDataset.length} items. Ready to scan.`;
+                    this.xmlDatabase = this.parseXmlData(xmlDoc);
+                    this.status.textContent = `XML database loaded successfully. Found ${this.xmlDatabase.length} items. Ready to scan.`;
                 } catch (error) {
                     console.error('Error loading XML file:', error);
-                    this.status.textContent = 'Could not load database. Only your data will be used.';
+                    this.status.textContent = 'Could not load XML data. Only local database will be used.';
                 }
             }
 
@@ -283,8 +305,11 @@
                 for (let i = 0; i < items.length; i++) {
                     const item = items[i];
                     parsedData.push({
-                        id: item.getElementsByTagName('ItemSerialID')[0]?.textContent,
-                        serialNumber: item.getElementsByTagName('SerialNumber')[0]?.textContent,
+                        id: item.getElementsByTagName('id')[0]?.textContent,
+                        serialNumber: item.getElementsByTagName('serialNumber')[0]?.textContent,
+                        manufacturer: item.getElementsByTagName('manufacturer')[0]?.textContent,
+                        category: item.getElementsByTagName('category')[0]?.textContent,
+                        model: item.getElementsByTagName('model')[0]?.textContent,
                         room: item.getElementsByTagName('room')[0]?.textContent,
                         rack: item.getElementsByTagName('rack')[0]?.textContent,
                         row: item.getElementsByTagName('row')[0]?.textContent,
@@ -294,6 +319,21 @@
             }
 
             populateDropdowns() {
+                // Populate Manufacturer and Category dropdowns
+                this.manufacturers.forEach(m => {
+                    const option = document.createElement('option');
+                    option.value = m;
+                    option.textContent = m;
+                    this.newManufacturer.appendChild(option);
+                });
+
+                this.categories.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c;
+                    option.textContent = c;
+                    this.newCategory.appendChild(option);
+                });
+
                 for (let i = 65; i <= 90; i++) {
                     const rackLetter = String.fromCharCode(i);
                     const option = document.createElement('option');
@@ -309,32 +349,45 @@
                     this.newRow.appendChild(option);
                 }
             }
-            loadDatasetFromLocalStorage() {
-                const storedData = localStorage.getItem('inventoryDataset');
+
+            loadDatabaseFromLocalStorage() {
+                const storedData = localStorage.getItem('inventoryDatabase');
                 if (storedData) {
                     try {
-                        this.dataset = JSON.parse(storedData);
+                        this.database = JSON.parse(storedData);
                     } catch (error) {
-                        console.error('Error parsing your data:', error);
-                        this.dataset = [];
+                        console.error('Error parsing local storage data:', error);
+                        this.database = [];
                     }
                 } else {
-                    this.dataset = [];
+                    this.database = [];
                 }
-                this.updateDatasetPreview();
+                this.updateDatabasePreview();
             }
 
-            saveDatasetToLocalStorage() {
-                localStorage.setItem('inventoryDataset', JSON.stringify(this.dataset));
+            saveDatabaseToLocalStorage() {
+                localStorage.setItem('inventoryDatabase', JSON.stringify(this.database));
             }
 
             downloadExcel() {
-                if (this.dataset.length === 0) {
-                   alert('Scan some items first.');
+                if (this.database.length === 0) {
+                    alert('Database is empty! Scan some items first.');
                     return;
                 }
 
-                const worksheet = XLSX.utils.json_to_sheet(this.dataset);
+                // Reformat data with new fields and specified column order
+                const dataForExcel = this.database.map(item => ({
+                    'ID': item.id,
+                    'Serial Number': item.serialNumber,
+                    'Manufacturer': item.manufacturer,
+                    'Category': item.category,
+                    'Model / Part Number': item.model,
+                    'Room': item.room,
+                    'Rack': item.rack,
+                    'Row': item.row
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
                 
@@ -395,13 +448,13 @@
                 this.lastScan.classList.remove('hidden');
                 this.lastScanValue.textContent = scannedValue;
                 
-                const existingItem = this.dataset.find(item => item.serialNumber === scannedValue);
+                const existingItem = this.database.find(item => item.serialNumber === scannedValue);
                 if (existingItem) {
                     this.showFoundResult(existingItem);
                     return;
                 }
                 
-                const xmlItem = this.xmlDataset.find(item => item.serialNumber === scannedValue);
+                const xmlItem = this.xmlDatabase.find(item => item.serialNumber === scannedValue);
                 if (xmlItem) {
                     this.showXmlResult(xmlItem);
                     return;
@@ -438,7 +491,7 @@
                 modalContent.innerHTML = `
                     <div class="text-center">
                         <div class="text-4xl mb-3">📁</div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in XML!</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Item Found in XML Database!</h3>
                         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
                             <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Item ID:</div>
                             <div class="font-semibold text-blue-700 dark:text-blue-400 text-lg">${item.id}</div>
@@ -456,7 +509,6 @@
                 this.resultModal.classList.remove('hidden');
             }
 
-
             showNotFoundResult(scannedValue) {
                 const modalContent = document.getElementById('modal-content');
                 modalContent.innerHTML = `
@@ -470,7 +522,7 @@
                         <div class="space-y-3">
                             <button onclick="document.getElementById('result-modal').classList.add('hidden'); scanner.showAddModal('${scannedValue}')" 
                                     class="w-full px-4 py-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors">
-                                Add to Dataset
+                                Add to Database
                             </button>
                         </div>
                     </div>
@@ -493,36 +545,40 @@
                 const serialNumber = document.getElementById('new-serial').value;
                 const id = parseInt(document.getElementById('new-item-id').value);
                 
+                const manufacturer = this.newManufacturer.value;
+                const category = this.newCategory.value;
+                const model = this.newModel.value;
+
                 const room = this.newRoom.value;
                 const rack = this.newRack.value;
                 const row = this.newRow.value;
                 
-                this.dataset.push({ id, serialNumber, room, rack, row });
+                this.database.push({ id, serialNumber, manufacturer, category, model, room, rack, row });
                 
-                this.updateDatasetPreview();
-                this.saveDatasetToLocalStorage();
+                this.updateDatabasePreview();
+                this.saveDatabaseToLocalStorage();
                 this.hideAddModal();
                 
-                this.status.textContent = `Added item ${id}. Data saved.`;
+                this.status.textContent = `Added item ${id}. Database saved to local storage.`;
             }
 
             getNextId() {
-                if (this.dataset.length === 0) return 1;
-                return Math.max(...this.dataset.map(item => item.id)) + 1;
+                if (this.database.length === 0) return 1;
+                return Math.max(...this.database.map(item => item.id)) + 1;
             }
 
-            updateDatasetPreview() {
-                const preview = document.getElementById('dataset-preview');
+            updateDatabasePreview() {
+                const preview = document.getElementById('database-preview');
                 const total = document.getElementById('total-items');
                 
-                total.textContent = this.dataset.length;
+                total.textContent = this.database.length;
                 
-                if (this.dataset.length === 0) {
+                if (this.database.length === 0) {
                     preview.innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 text-sm py-4">No items yet</div>';
                     return;
                 }
                 
-                const lastFive = this.dataset
+                const lastFive = this.database
                     .sort((a, b) => b.id - a.id)
                     .slice(0, 5);
                     
